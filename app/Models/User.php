@@ -1,0 +1,51 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
+
+class User extends Authenticatable
+{
+    use HasApiTokens, HasFactory, Notifiable;
+
+    protected $fillable = [
+        'name',
+        'last_name_kanji', 
+        'first_name_kanji', 
+        'last_name_kana', 
+        'first_name_kana', 
+        'email',
+        'password',
+    ];
+
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+    ];
+
+    /**
+     * Userは複数のItemを出品できる (一対多)
+     */
+    public function items()
+    {
+        return $this->hasMany(Item::class);
+    }
+
+    /**
+     * Userは複数のLikeを持つ (一対多)
+     * どの商品にいいねしたかを確認できる
+     */
+    public function likes()
+    {
+        return $this->hasMany(Like::class);
+    }
+}
