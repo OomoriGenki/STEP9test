@@ -14,18 +14,21 @@ return new class extends Migration
         Schema::create('items', function (Blueprint $table) {
             $table->id();
             
-            // 外部キー: どのユーザーが出品したか
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            // 外部キー: user_id は必須かつユーザー削除時に商品も削除
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete(); 
             
             // 商品情報
-            $table->string('name');
+            $table->string('name', 255); // 文字数制限を追加 (任意)
             $table->text('description');
-            $table->integer('price');
-            $table->string('company')->nullable(); // 会社名（必須でなければnullable）
-            $table->string('image_path')->nullable(); // 画像のパス
             
-            // 在庫数（購入機能のために追加）
-            $table->integer('stock')->default(0);
+            // 💡 価格を unsignedInteger に修正
+            $table->unsignedInteger('price');
+            
+            $table->string('company')->nullable(); 
+            $table->string('image_path')->nullable(); 
+            
+            // 💡 在庫数の初期値を 1 に修正 (任意)
+            $table->integer('stock')->default(1); 
 
             $table->timestamps();
         });

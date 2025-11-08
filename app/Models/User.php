@@ -48,4 +48,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(Like::class);
     }
+    
+    /**
+     * Userは複数のPurchaseを持つ（購入履歴） (一対多)
+     */
+    public function purchases()
+    {
+        return $this->hasMany(Purchase::class);
+    }
 }

@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth; // 特定ユーザーのいいね確認のために追加
+// 💡 Auth ファサードは不要になるため削除
 
 class Item extends Model
 {
@@ -17,11 +17,11 @@ class Item extends Model
         'price',
         'company',
         'image_path',
+        'stock', // 💡 修正点: 'stock' カラムを追加
     ];
 
     /**
      * ItemはUserに属する (多対一)
-     * どのユーザーが出品したか
      */
     public function user()
     {
@@ -30,29 +30,39 @@ class Item extends Model
 
     /**
      * Itemは複数のLikeを持つ (一対多)
-     * 1つの商品に対して「いいね」は複数
      */
     public function likes()
     {
-        // 画像の内容をItemモデルに合わせて修正
         return $this->hasMany(Like::class);
     }
+    
+    // 購入リレーションも追加
+    public function purchases()
+    {
+        return $this->hasMany(Purchase::class);
+    }
 
-    // 【提案】いいね総数を取得するアクセサを追加
+
+    /**
+     * いいね総数を取得するアクセサ
+     */
     public function getLikesCountAttribute()
     {
         return $this->likes()->count();
     }
 
     /**
-     * 特定のユーザーがこの商品に「いいね」をしているかどうかを判定するアクセサ
+     * 💡 修正点: 特定のユーザーがこの商品に「いいね」をしているかどうかを判定するメソッド
+     * @param int|null $userId
+     * @return bool
      */
-    public function getIsLikedAttribute()
+    public function isLikedByUser($userId = null)
     {
-        if (Auth::guest()) {
-            return false;
+        // $userIdがnullの場合は false を返す (コントローラー側で Auth::id() を渡すことを前提とする)
+        if (is_null($userId)) {
+             return false;
         }
-        // 現在ログインしているユーザーがこの商品にいいねしているかチェック
-        return $this->likes()->where('user_id', Auth::id())->exists();
+        
+        return $this->likes()->where('user_id', $userId)->exists();
     }
 }

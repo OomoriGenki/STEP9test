@@ -18,7 +18,7 @@ class LikeController extends Controller
     }
 
     /**
-     * ① いいねを追加する処理 (POST /api/likes)
+     * ① いいねを追加する処理 (POST /items/{item}/like)
      * Requestからitem_idを受け取り、Likeレコードを作成する
      */
     public function store(Request $request)
@@ -33,12 +33,12 @@ class LikeController extends Controller
 
         // 2. 既に「いいね」が存在するかチェック (二重登録防止)
         $like = Like::where('user_id', $userId)
-                    ->where('item_id', $itemId)
-                    ->first();
+                        ->where('item_id', $itemId)
+                        ->first();
 
         if ($like) {
-            // 既に存在する場合はエラー、または成功として返す（ idempotency: 冪等性）
-            return response()->json(['message' => '既にいいねされています。'], 200);
+            // 既に存在する場合は、特に何もしないで元のページに戻る
+            return back()->with('error', '既にこの商品にいいねしています。');
         }
 
         // 3. いいねをデータベースに追加
@@ -47,18 +47,12 @@ class LikeController extends Controller
             'item_id' => $itemId,
         ]);
 
-        // 4. 成功レスポンスを返す (ステータス: 201 Created)
-        // いいね総数など、最新の情報を返すのが一般的
-        $item = Item::find($itemId);
-        return response()->json([
-            'message' => 'いいねを追加しました。',
-            'is_liked' => true,
-            'likes_count' => $item->likes()->count()
-        ], 201);
+        // 4. 成功後に元のページにリダイレクト
+        return back()->with('success', 'いいねを追加しました。');
     }
 
     /**
-     * ② いいねを削除する処理 (DELETE /api/likes/{item_id})
+     * ② いいねを削除する処理 (DELETE /items/{item}/unlike)
      * URLパラメータからitem_idを受け取り、Likeレコードを削除する
      */
     public function destroy($itemId)
@@ -67,23 +61,18 @@ class LikeController extends Controller
 
         // 1. 削除対象のLikeレコードを検索
         $like = Like::where('user_id', $userId)
-                    ->where('item_id', $itemId)
-                    ->first();
+                        ->where('item_id', $itemId)
+                        ->first();
 
         if (!$like) {
-            // いいねが存在しない場合はエラー、または成功として返す
-            return response()->json(['message' => 'いいねが見つかりませんでした。'], 404);
+            // いいねが存在しない場合は、特に何もしないで元のページに戻る
+            return back()->with('error', '削除するいいねが見つかりませんでした。');
         }
 
         // 2. 削除を実行
         $like->delete();
 
-        // 3. 成功レスポンスを返す (ステータス: 200 OK)
-        $item = Item::find($itemId);
-        return response()->json([
-            'message' => 'いいねを削除しました。',
-            'is_liked' => false,
-            'likes_count' => $item->likes()->count()
-        ], 200);
+        // 3. 成功後に元のページにリダイレクト
+        return back()->with('success', 'いいねを削除しました。');
     }
 }

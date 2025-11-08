@@ -40,8 +40,8 @@ class AuthController extends Controller
             $request->session()->regenerate();
 
             // ログイン成功時の遷移先 (商品一覧画面を想定)
-            // ルーティング名は 'products.index' を想定
-            return redirect()->intended(route('products.index'));
+            // ルーティング名は 'items.index' を想定
+            return redirect()->intended(route('items.index'));
         }
 
         // 認証失敗
@@ -91,7 +91,7 @@ class AuthController extends Controller
         Auth::login($user);
 
         // 4. 商品一覧へリダイレクト
-        return redirect()->route('products.index');
+        return redirect()->route('items.index');
     }
 
     /**
