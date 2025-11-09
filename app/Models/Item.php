@@ -42,7 +42,6 @@ class Item extends Model
         return $this->hasMany(Purchase::class);
     }
 
-
     /**
      * いいね総数を取得するアクセサ
      */
@@ -64,5 +63,10 @@ class Item extends Model
         }
         
         return $this->likes()->where('user_id', $userId)->exists();
+    }
+
+    public function category()
+    {
+    return $this->belongsTo(Category::class);
     }
 }

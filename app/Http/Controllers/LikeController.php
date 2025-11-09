@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Like;
-use App\Models\Item;
-use Illuminate\Http\Request;
+use App\Models\Item; // Itemモデルを使用
+use Illuminate\Http\Request; // Requestはstoreで使用するが、引数から削除
 use Illuminate\Support\Facades\Auth;
 
 class LikeController extends Controller
@@ -14,65 +14,60 @@ class LikeController extends Controller
      */
     public function __construct()
     {
+        // ルーティングでミドルウェアを設定済みの場合、この記述は省略可能
         $this->middleware('auth');
     }
 
     /**
-     * ① いいねを追加する処理 (POST /items/{item}/like)
-     * Requestからitem_idを受け取り、Likeレコードを作成する
+     * ① いいねを追加する処理 (POST /likes/{item})
+     * ルートモデルバインディングによりItemモデルのインスタンスを受け取る
      */
-    public function store(Request $request)
+    public function store(Item $item)
     {
-        // 1. バリデーション: item_idが必須で、itemsテーブルに存在するIDであること
-        $request->validate([
-            'item_id' => 'required|exists:items,id',
-        ]);
-
-        $itemId = $request->item_id;
+        $itemId = $item->id;
         $userId = Auth::id();
 
-        // 2. 既に「いいね」が存在するかチェック (二重登録防止)
+        // 既に「いいね」が存在するかチェック (二重登録防止)
         $like = Like::where('user_id', $userId)
-                        ->where('item_id', $itemId)
-                        ->first();
+                         ->where('item_id', $itemId)
+                         ->first();
 
         if ($like) {
-            // 既に存在する場合は、特に何もしないで元のページに戻る
+            // 既に存在する場合は、元のページに戻る
             return back()->with('error', '既にこの商品にいいねしています。');
         }
 
-        // 3. いいねをデータベースに追加
+        // いいねをデータベースに追加
         Like::create([
             'user_id' => $userId,
             'item_id' => $itemId,
         ]);
 
-        // 4. 成功後に元のページにリダイレクト
+        // 成功後に元のページにリダイレクト
         return back()->with('success', 'いいねを追加しました。');
     }
 
     /**
-     * ② いいねを削除する処理 (DELETE /items/{item}/unlike)
-     * URLパラメータからitem_idを受け取り、Likeレコードを削除する
+     * ② いいねを削除する処理 (DELETE /likes/{item})
+     * ルートモデルバインディングによりItemモデルのインスタンスを受け取る
      */
-    public function destroy($itemId)
+    public function destroy(Item $item)
     {
+        $itemId = $item->id;
         $userId = Auth::id();
 
-        // 1. 削除対象のLikeレコードを検索
-        $like = Like::where('user_id', $userId)
-                        ->where('item_id', $itemId)
-                        ->first();
+        // 削除対象のLikeレコードを検索
+        // ユーザーとアイテムIDが一致するレコードのみを削除
+        $deletedCount = Like::where('user_id', $userId)
+                         ->where('item_id', $itemId)
+                         ->delete(); // first()で取得せず、直接delete()を実行する方が効率的
 
-        if (!$like) {
-            // いいねが存在しない場合は、特に何もしないで元のページに戻る
+        if ($deletedCount === 0) {
+            // 削除されたレコードがない場合
             return back()->with('error', '削除するいいねが見つかりませんでした。');
         }
 
-        // 2. 削除を実行
-        $like->delete();
-
-        // 3. 成功後に元のページにリダイレクト
+        // 成功後に元のページにリダイレクト
         return back()->with('success', 'いいねを削除しました。');
     }
 }
