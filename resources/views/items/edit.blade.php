@@ -1,6 +1,67 @@
-@extends('layouts.app')
-
-@section('content')
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>商品新規登録 - FrilClone</title>
+    
+    {{-- ★ Bootstrap 5.3 CDN を導入 ★ --}}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <style>
+        body { 
+            font-family: sans-serif; 
+            margin: 0; 
+            background-color: #f7f7f7; 
+        }
+        .header { 
+            background-color: #333; 
+            color: white; 
+            padding: 15px 30px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+        .header a { 
+            color: white; 
+            text-decoration: none; 
+            margin-left: 20px; 
+            font-weight: bold; 
+        }
+        .header a:hover { text-decoration: underline; }
+        
+        /* コンテンツエリアの調整 */
+        .container { 
+            padding-top: 40px; 
+            padding-bottom: 40px;
+        }
+    </style>
+</head>
+<body>
+    {{-- ヘッダー部分 (元のコードを再利用) --}}
+    <header class="header">
+        <div class="logo">
+            <a href="{{ route('items.index') }}">FrilClone</a>
+        </div>
+        <nav>
+            @auth
+                <a href="{{ route('mypage.index') }}">マイページ</a>
+                <a href="{{ route('items.create') }}">出品</a>
+                <span class="user-name">
+                    ログインユーザー: {{ Auth::user()->name }}
+                </span>
+                <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: inline;" class="logout-form">
+                    @csrf
+                    <button type="submit" class="logout-button">ログアウト</button>
+                </form>
+            @else
+                <a href="{{ route('login') }}">ログイン</a>
+                <a href="{{ route('register') }}">新規登録</a>
+                <a href="{{ route('contact.create') }}">お問い合わせ</a>
+            @endauth
+        </nav>
+    </header>
+    
 <div class="row justify-content-center">
     <div class="col-md-8">
         <div class="card shadow-lg">
@@ -27,12 +88,12 @@
                             <h6 class="text-muted mb-2">現在の画像:</h6>
                             {{-- 既存の画像を表示。新しい画像を選択すると、JavaScriptでこのimgタグのsrcが更新される --}}
                             <img id="image-preview" 
-                                 src="{{ $item->image_path ? Storage::url($item->image_path) : 'https://placehold.co/400x400/5c6bc0/ffffff?text=No+Image' }}" 
+                                 src="{{ $item->image_path ? Storage::url($item->image_path) : '' }}" 
                                  alt="画像プレビュー" 
                                  class="img-fluid rounded" 
                                  style="max-height: 250px; object-fit: contain;">
                             @if (!$item->image_path)
-                                <p class="text-danger mt-2 mb-0">現在、画像が登録されていません。</p>
+                                <p id="no-image-text" class="text-danger mt-2 mb-0">現在、画像が登録されていません。</p>
                             @endif
                         </div>
                     </div>

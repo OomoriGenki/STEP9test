@@ -38,6 +38,13 @@ class PurchaseController extends Controller
      */
     public function store(Request $request, Item $item)
     {
+        // 1. 数量のバリデーションと取得
+        $validated = $request->validate([
+            // quantityは必須、整数、1以上、かつ商品の在庫数以下であることを確認
+            'quantity' => 'required|integer|min:1|max:' . $item->stock, 
+        ]);
+        $quantity = $validated['quantity'];
+
         // 自分の出品物でないか再チェック（不正アクセス防止）
         if ($item->user_id === Auth::id()) {
             return back()->with('error', 'ご自身が出品した商品は購入できません。');
@@ -47,34 +54,37 @@ class PurchaseController extends Controller
 
         try {
             // トランザクション処理: 在庫減少と購入記録を同時に実行
-            DB::transaction(function () use ($item, $user) {
+            // $quantity を use で渡し、トランザクション内で使用可能にする
+            DB::transaction(function () use ($item, $user, $quantity) {
                 
-                // 1. 在庫チェックと減少をアトミックに実行
-                // stock > 0 であることを確認しながら、同時に在庫数を1減らす (競合対策)
+                // 2. 在庫チェックと減少をアトミックに実行
                 $updated = $item->where('id', $item->id)
-                                ->where('stock', '>', 0)
-                                ->decrement('stock');
+                                 // $quantity以上の在庫があるかチェック
+                                ->where('stock', '>=', $quantity)
+                                 // $quantity 分だけ在庫を減らす
+                                ->decrement('stock', $quantity); 
                 
                 if (!$updated) {
-                    // 在庫更新が失敗した場合 (在庫が0以下だった場合)
-                    throw new \Exception('在庫の確保に失敗しました。この商品は既に売り切れた可能性があります。');
+                    // 在庫更新が失敗した場合
+                    throw new \Exception('在庫の確保に失敗しました。購入希望数（' . $quantity . '）に対して在庫が不足しているか、既に売り切れています。');
                 }
 
-                // 2. Purchase テーブルに購入記録を保存
+                // 3. Purchase テーブルに購入記録を保存
                 Purchase::create([
                     'user_id' => $user->id,
                     'item_id' => $item->id,
-                    'price' => $item->price,       // 購入時の価格を記録 (重要)
-                    'quantity' => 1,               // 数量
-                    'status' => 'pending_payment', // 初期ステータス (例: 支払い待ち)
+                    'price' => $item->price * $quantity,     // 合計金額を記録 (単価 x 数量)
+                    'quantity' => $quantity,                 // 数量を記録
+                    'status' => 'completed',                 // 初期ステータス (例: 完了)
                 ]);
             });
 
-            return redirect()->route('items.show', $item)->with('success', '購入が完了しました！');
+            // 4. リダイレクト先をマイページ（購入履歴を確認できるページ）に変更
+            return redirect()->route('mypage.index')->with('success', $item->name . 'を' . $quantity . '点購入しました！');
 
         } catch (\Exception $e) {
-            // トランザクション内で発生した例外をキャッチし、ユーザーにメッセージを返す
-            return redirect()->route('items.show', $item)->with('error', '購入処理中にエラーが発生しました: ' . $e->getMessage());
+            // エラー時は購入手続き画面に戻す
+            return redirect()->route('purchases.create', $item)->with('error', '購入処理中にエラーが発生しました: ' . $e->getMessage());
         }
     }
 }

@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Pagination\Paginator; // ★ Paginatorを追加 ★
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,7 +21,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // これがキーとなる追加行
-    Schema::disableForeignKeyConstraints();
+        // ★ ページネーションにBootstrapのビューを使用する設定を追加 ★
+        Paginator::useBootstrap();
+        
+        // マイグレーションエラー回避設定は削除を推奨
+        // Schema::disableForeignKeyConstraints();
     }
 }

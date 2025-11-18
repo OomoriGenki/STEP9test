@@ -23,7 +23,7 @@
             border: 1px solid #ccc; 
             border-radius: 4px;
         }
-        .search-form input[name="product_name"] {
+        .search-form input[name="keyword"] {
             flex-grow: 1;
             max-width: 300px;
         }
@@ -59,6 +59,14 @@
         .product-list th {
             background-color: #e9ecef;
             font-weight: bold;
+            white-space: nowrap;
+        }
+        /* 各ヘッダーの幅を明示的に設定して、1行に収まるようにする */
+        .product-list thead th:nth-child(1) { /* 商品番号 */
+            width: 120px;
+        }
+        .product-list thead th:nth-child(5) { /* 料金(¥) */
+            width: 100px;
         }
         .product-list td.item-image {
             text-align: center;
@@ -95,15 +103,18 @@
 <body>
     <header class="header">
         <div class="logo">
-            <a href="{{ route('products.index') }}">FrilClone</a>
+            <a href="{{ route('items.index') }}">FrilClone</a>
         </div>
         <nav>
             @auth
                 <a href="{{ route('mypage.index') }}">マイページ</a>
                 <a href="{{ route('items.create') }}">出品</a>
+                <span class="user-name">
+                    ログインユーザー: {{ Auth::user()->name }}
+            </span>
                 <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: inline;" class="logout-form">
                     @csrf
-                    <button type="submit">ログアウト</button>
+                    <button type="submit" class="logout-button">ログアウト</button>
                 </form>
             @else
                 <a href="{{ route('login') }}">ログイン</a>
@@ -116,8 +127,12 @@
     <div class="content">
         <h1>商品一覧</h1>
         
-        <form action="{{ route('products.index') }}" method="GET" class="search-form">
-            <input type="text" name="product_name" placeholder="商品名を入力" value="{{ request('product_name') }}">
+        <form action="{{ route('items.index') }}" method="GET" class="search-form">
+            
+            @if(request('sort'))
+                <input type="hidden" name="sort" value="{{ request('sort') }}">
+            @endif
+            <input type="text" name="keyword" placeholder="商品名を入力" value="{{ request('keyword') }}">
             
             <input type="text" name="min_price" placeholder="最低価格" value="{{ request('min_price') }}">
             <span>〜</span>
@@ -138,32 +153,34 @@
                         <th></th> </tr>
                 </thead>
                 <tbody>
-                    @php
-                        // 画面レイアウトのデータ
-                        $products = [
-                            ['id' => 1, 'name' => '鉛筆', 'description' => '描きやすい鉛筆です', 'price' => 200, 'image_url' => 'dummy_pencil.png'],
-                            ['id' => 3, 'name' => 'イヤホン', 'description' => 'ワイヤレスです', 'price' => 1000, 'image_url' => 'dummy_earphone.png'],
-                            ['id' => 4, 'name' => 'タブレット', 'description' => '軽量です', 'price' => 25000, 'image_url' => 'dummy_tablet.png'],
-                            ['id' => 5, 'name' => 'デスク', 'description' => '昇降できます', 'price' => 30000, 'image_url' => 'dummy_desk.png'],
-                        ];
-                    @endphp
-
-                    @foreach ($products as $product)
+                    {{-- ★ 静的データ $products を削除し、コントローラから渡される $items を使用 ★ --}}
+                    @forelse ($items as $item)
                     <tr>
-                        <td>{{ $product['id'] }}</td>
-                        <td>{{ $product['name'] }}</td>
-                        <td>{{ $product['description'] }}</td>
+                        <td>{{ $item->id }}</td>
+                        <td>{{ $item->name }}</td>
+                        <td>{{ $item->description }}</td>
                         <td class="item-image">
-                                                    </td>
-                        <td>{{ number_format($product['price']) }}</td>
+                            {{-- 修正: Storage::url() を asset() に変更 --}}
+                        <img src="{{ asset($item->image_path) }}" alt="{{ $item->name }}">
+                        </td>
+                        <td>{{ number_format($item->price) }}</td>
                         <td>
-                            <a href="{{ route('products.show', $product['id']) }}" class="detail-button">詳細</a>
+                            {{-- ★ route('products.show') を route('items.show') に修正 ★ --}}
+                            <a href="{{ route('items.show', $item) }}" class="detail-button">詳細</a>
                         </td>
                     </tr>
-                    @endforeach
+                    @empty
+                    <tr>
+                        <td colspan="6" style="text-align: center;">現在、該当する商品はありません。</td>
+                    </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
-    </div>
+
+        {{-- ページネーションリンクを追加 --}}
+        <div class="mt-4">
+            {{ $items->appends(request()->query())->links('pagination::simple-default') }}
+        </div>
 </body>
 </html>

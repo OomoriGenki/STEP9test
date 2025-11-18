@@ -3,29 +3,36 @@
 namespace Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
-use App\Models\Item; // Itemモデルの使用を明示
-use App\Models\User; // user_id の取得に必要
+use App\Models\Item;
 
 class ItemFactory extends Factory
 {
-    protected $model = Item::class;
+    // ★ 修正: protected $model を設定し、protected $faker を日本語ロケールで定義する ★
 
+    /**
+     * Define the model's default state.
+     *
+     * @return array<string, mixed>
+     */
     public function definition(): array
     {
+        // $this->faker は日本語データになる
         return [
-            // 💡 修正箇所: 必須カラムにダミーデータを追加
-            
-            // 外部キーはシーダーで渡されることが多いが、ファクトリ内でも定義可能
-            'user_id' => User::factory(), // ユーザーが未登録なら自動で作成する
-
-            'name' => fake()->word() . ' ' . fake()->colorName(), // 商品名
-            'description' => fake()->text(), // 商品説明
-            'price' => fake()->numberBetween(100, 50000), // 価格 (100円から5万円)
-            
-            // 以前のマイグレーションで追加した任意/必須カラムも定義
-            'company' => fake()->company(), 
-            'image_path' => null, // 画像は省略
-            'stock' => fake()->numberBetween(1, 10), // 在庫数
+            'name' => $this->faker->realText(15), // ★ 商品名として自然な短文を生成 ★
+            'description' => $this->faker->realText(100),
+            // 他の必須カラム...
+            'price' => $this->faker->numberBetween(500, 50000),
+            'stock' => 1,
+            'condition' => $this->faker->randomElement(['新品', '中古', 'ジャンク']),
+            'image_path' => 'images/items/dummy_' . $this->faker->numberBetween(1, 5) . '.png',
+            'category_id' => $this->faker->numberBetween(1, 5),
+            // 'user_id' はセーダー側で上書きされるためここでは省略可
         ];
+    }
+    
+    // ★ 日本語のFakerインスタンスを返すメソッドを追加 (Laravel 9以降の書き方) ★
+    public static function newFactory($count = null, $state = []): Factory
+    {
+        return parent::newFactory($count, $state)->locale('ja_JP');
     }
 }

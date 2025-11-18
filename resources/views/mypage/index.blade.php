@@ -1,147 +1,218 @@
-@extends('layouts.app')
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>商品一覧 - FrilClone</title>
+    <style>
+        body { font-family: sans-serif; margin: 0; background-color: #f8f8f8; }
+        .header { background-color: #333; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        .header a { color: white; text-decoration: none; margin-left: 20px; font-weight: bold; }
+        .header a:hover { text-decoration: underline; }
+        
+        .content { padding: 40px; max-width: 1200px; margin: 0 auto; }
+        
+        /* --- 検索フォームのスタイル --- */
+        .search-form { 
+            display: flex; 
+            gap: 10px; 
+            margin-bottom: 30px; 
+            align-items: center;
+        }
+        .search-form input[type="text"] { 
+            padding: 8px; 
+            border: 1px solid #ccc; 
+            border-radius: 4px;
+        }
+        .search-form input[name="keyword"] {
+            flex-grow: 1;
+            max-width: 300px;
+        }
+        .search-form input[name="min_price"],
+        .search-form input[name="max_price"] {
+            width: 120px;
+            text-align: right;
+        }
+        .search-form button {
+            padding: 8px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .search-form span {
+            font-weight: bold;
+        }
 
-@section('content')
+        /* --- 商品一覧テーブルのスタイル --- */
+        .product-list table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .product-list th, .product-list td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        .product-list th {
+            background-color: #e9ecef;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        /* 各ヘッダーの幅を明示的に設定して、1行に収まるようにする */
+        .product-list thead th:nth-child(1) { /* 商品番号 */
+            width: 120px;
+        }
+        .product-list thead th:nth-child(5) { /* 料金(¥) */
+            width: 100px;
+        }
+        .product-list td.item-image {
+            text-align: center;
+            width: 100px;
+        }
+        .product-list td.item-image img {
+            width: 80px; 
+            height: 80px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        .product-list .detail-button {
+            background-color: #28a745; /* 緑色 */
+            color: white;
+            padding: 5px 10px;
+            text-decoration: none;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        
+        /* ログイン/ログアウトボタンのスタイル (ヘッダー内) */
+        .logout-form button { 
+            background: none; 
+            border: none; 
+            color: white; 
+            cursor: pointer; 
+            font-size: 16px; 
+            font-weight: bold; 
+            padding: 0; 
+            margin-left: 20px;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <a href="{{ route('items.index') }}">FrilClone</a>
+        </div>
+        <nav>
+            @auth
+                <a href="{{ route('mypage.index') }}">マイページ</a>
+                <a href="{{ route('items.create') }}">出品</a>
+                <span class="user-name">
+                    ログインユーザー: {{ Auth::user()->name }}
+            </span>
+                <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: inline;" class="logout-form">
+                    @csrf
+                    <button type="submit" class="logout-button">ログアウト</button>
+                </form>
+            @else
+                <a href="{{ route('login') }}">ログイン</a>
+                <a href="{{ route('register') }}">新規登録</a>
+                <a href="{{ route('contact.create') }}">お問い合わせ</a>
+            @endauth
+        </nav>
+    </header>
+
 <div class="row justify-content-center">
     <div class="col-md-10">
-        <h1 class="text-center mb-4 fw-bold text-success">マイページ</h1>
+        <h1 class="text-start mb-4 fw-bold">マイページ</h1>
         
-        <!-- ユーザー情報の表示 (ログインユーザー) -->
-        <div class="card shadow-lg border-0 mb-5">
-            <div class="card-body d-flex flex-column flex-md-row align-items-center p-4">
-                {{-- プロフィール画像のプレースホルダーまたは登録画像 --}}
-                <img src="{{ Auth::user()->profile_image_url ?? 'https://placehold.co/100x100/38a169/ffffff?text=User' }}" 
-                    alt="プロフィール画像" class="rounded-circle me-4 mb-3 mb-md-0" style="width: 80px; height: 80px; object-fit: cover; border: 2px solid #38a169;">
-                <div>
-                    <h2 class="h4 mb-0">{{ Auth::user()->name }}</h2>
-                    <p class="text-muted mb-0">{{ Auth::user()->email }}</p>
-                    {{-- ★ プロフィール編集ルートに修正 ★ --}}
-                    <a href="{{ route('account.edit') }}" class="btn btn-outline-secondary btn-sm mt-2">プロフィールを編集</a>
+        <div class="card shadow-sm border-0 mb-5 p-4">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                {{-- アカウント編集ボタン --}}
+                <a href="{{ route('mypage.editAccount') }}" class="btn btn-primary btn-sm">アカウント編集</a> 
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    {{-- ユーザー名とEメールは左側に表示 --}}
+                    <p class="mb-1"><strong>ユーザ名:</strong> {{ Auth::user()->name }}</p>
+                    <p class="mb-1"><strong>Eメール:</strong> {{ Auth::user()->email }}</p>
                 </div>
+                <div class="col-md-6 text-md-end">
+                    {{-- 名前とカナは右側に表示 --}}
+                    <div class="col-md-6 user-info-right">
+                            <p class="mb-1"><strong>名前:</strong> {{ Auth::user()->profile->full_name ?? '未設定' }}</p> 
+                            <p class="mb-1"><strong>カナ:</strong> {{ Auth::user()->profile->full_name_kana ?? '未設定' }}</p> 
+                    </div>
             </div>
         </div>
         
-        <!-- タブ切り替え（出品商品 / いいね一覧 / 購入履歴） -->
-        <ul class="nav nav-tabs nav-fill mb-4" id="mypageTab" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active fs-6 fs-md-5" id="items-tab" data-bs-toggle="tab" data-bs-target="#my-items" type="button" role="tab" aria-controls="my-items" aria-selected="true">
-                    出品中の商品 ({{ $items->count() }})
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link fs-6 fs-md-5" id="likes-tab" data-bs-toggle="tab" data-bs-target="#liked-items" type="button" role="tab" aria-controls="liked-items" aria-selected="false">
-                    いいねした商品 ({{ $likedItems->count() }})
-                </button>
-            </li>
-            {{-- ★ 購入履歴タブの追加 ★ --}}
-            <li class="nav-item" role="presentation">
-                <button class="nav-link fs-6 fs-md-5" id="purchases-tab" data-bs-toggle="tab" data-bs-target="#purchased-items" type="button" role="tab" aria-controls="purchased-items" aria-selected="false">
-                    購入履歴 ({{ $purchasedItems->count() }})
-                </button>
-            </li>
-        </ul>
-
-        <!-- タブコンテンツ -->
-        <div class="tab-content" id="mypageTabContent">
-            
-            <!-- 1. 出品中の商品一覧 -->
-            <div class="tab-pane fade show active" id="my-items" role="tabpanel" aria-labelledby="items-tab">
-                @if ($items->isEmpty())
-                    <div class="alert alert-warning text-center p-4 rounded-3">
-                        <p class="mb-0 fs-5">現在、出品中の商品はありません。</p>
-                        <a href="{{ route('items.create') }}" class="btn btn-success btn-lg mt-3 shadow-sm">今すぐ出品を始める</a>
-                    </div>
-                @else
-                    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-4">
-                        @foreach ($items as $item)
-                            <div class="col">
-                                {{-- 商品カードのコンポーネントをインクルード --}}
-                                @include('components.item_card', ['item' => $item]) 
-                            </div>
-                        @endforeach
-                    </div>
-                @endif
-            </div>
-
-            <!-- 2. いいねした商品一覧 -->
-            <div class="tab-pane fade" id="liked-items" role="tabpanel" aria-labelledby="likes-tab">
-                @if ($likedItems->isEmpty())
-                    <div class="alert alert-info text-center p-4 rounded-3">
-                        <p class="mb-0 fs-5">いいねした商品がまだありません。</p>
-                        <a href="{{ route('items.index') }}" class="btn btn-primary btn-lg mt-3 shadow-sm">商品を探す</a>
-                    </div>
-                @else
-                    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-4">
-                        @foreach ($likedItems as $item)
-                            <div class="col">
-                                {{-- 商品カードのコンポーネントをインクルード --}}
-                                @include('components.item_card', ['item' => $item])
-                            </div>
-                        @endforeach
-                    </div>
-                @endif
+        <div class="mb-5">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="h5 fw-bold mb-0">＜出品商品＞</h2>
+                <a href="{{ route('items.create') }}" class="btn btn-primary btn-sm">新規登録</a> 
             </div>
             
-            {{-- ★ 3. 購入履歴一覧の追加 ★ --}}
-            <div class="tab-pane fade" id="purchased-items" role="tabpanel" aria-labelledby="purchases-tab">
-                @if ($purchasedItems->isEmpty())
-                    <div class="alert alert-success text-center p-4 rounded-3">
-                        <p class="mb-0 fs-5">まだ購入した取引がありません。</p>
-                        <a href="{{ route('items.index') }}" class="btn btn-success btn-lg mt-3 shadow-sm">最初の商品を購入する</a>
-                    </div>
-                @else
-                    <div class="row row-cols-1 g-4">
-                        @foreach ($purchasedItems as $purchase)
-                            {{-- $purchase は Purchase モデルのインスタンス --}}
-                            <div class="col">
-                                <div class="card shadow-sm border-start border-3 
-                                    @if($purchase->status === 'shipped') border-success @else border-warning @endif 
-                                    h-100">
-                                    <div class="card-body d-flex flex-column flex-md-row align-items-center">
-                                        {{-- 商品画像 --}}
-                                        <div class="flex-shrink-0 me-md-4 mb-3 mb-md-0">
-                                            <a href="{{ route('items.show', $purchase->item) }}">
-                                                <img src="{{ Storage::url($purchase->item->image_path) }}" 
-                                                    alt="{{ $purchase->item->name }}" 
-                                                    class="rounded" 
-                                                    style="width: 100px; height: 100px; object-fit: cover;">
-                                            </a>
-                                        </div>
-                                        
-                                        {{-- 詳細情報 --}}
-                                        <div class="flex-grow-1 text-center text-md-start">
-                                            <h5 class="card-title mb-1 fw-bold">
-                                                <a href="{{ route('items.show', $purchase->item) }}" class="text-decoration-none text-dark">
-                                                    {{ $purchase->item->name }}
-                                                </a>
-                                            </h5>
-                                            <p class="card-text mb-1 text-muted small">
-                                                購入日時: {{ $purchase->created_at->format('Y/m/d H:i') }}
-                                            </p>
-                                            <p class="card-text mb-0 fs-5 text-danger fw-bold">
-                                                購入価格: &yen;{{ number_format($purchase->price) }}
-                                            </p>
-                                        </div>
-
-                                        {{-- ステータス --}}
-                                        <div class="flex-shrink-0 mt-3 mt-md-0 text-md-end">
-                                            <span class="badge 
-                                                @if($purchase->status === 'shipped') bg-success 
-                                                @elseif($purchase->status === 'pending_payment') bg-warning text-dark
-                                                @else bg-secondary @endif 
-                                                fs-6 py-2 px-3">
-                                                {{ $purchase->status === 'shipped' ? '発送済み' : 
-                                                   ($purchase->status === 'pending_payment' ? '支払い待ち' : '取引中') }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                @endif
-            </div>
-
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th>商品番号</th>
+                        <th>商品名</th>
+                        <th>商品説明</th>
+                        <th>料金(￥)</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($items as $item)
+                    <tr>
+                        <td>{{ $item->id }}</td>
+                        <td>{{ $item->name }}</td>
+                        <td>{{ Str::limit($item->description, 30) }}</td>
+                        <td>{{ number_format($item->price) }}</td>
+                        <td><a href="{{ route('items.show', $item) }}" class="btn btn-sm btn-info text-white">詳細</a></td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">現在、出品中の商品はありません。</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="mb-5">
+            <h2 class="h5 fw-bold mb-3">＜購入した商品＞</h2>
+            
+            <table class="table table-bordered table-striped bg-white">
+                <thead>
+                    <tr>
+                        <th>商品名</th>
+                        <th>商品説明</th>
+                        <th>料金(￥)</th>
+                        <th>個数</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($purchasedItems as $purchase)
+                    <tr>
+                        {{-- $purchase->item から商品情報を取得 --}}
+                        <td>{{ $purchase->item->name }}</td>
+                        <td>{{ Str::limit($purchase->item->description, 30) }}</td>
+                        <td>{{ number_format($purchase->price) }}</td> {{-- 購入時の価格 $purchase->price --}}
+                        <td>{{ $purchase->quantity }}</td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="4" class="text-center text-muted">購入した取引がありません。</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
-@endsection
+</body>
+</html>

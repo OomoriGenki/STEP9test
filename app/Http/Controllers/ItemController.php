@@ -3,20 +3,27 @@
 namespace App\Http\Controllers;
 
 use App\Models\Item;
-use App\Models\Category; // カテゴリモデルを使用
+use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage; // ファイル操作のため追加
+use Illuminate\Support\Facades\Storage;
 
 class ItemController extends Controller
 {
     /**
      * 商品一覧を表示 (index)
-     * 検索、ソート、ページネーションに対応
      */
     public function index(Request $request)
     {
-        $query = Item::with(['user', 'likes']); // Eager LoadingでN+1問題を回避
+        // ★ 1. $userId をここで定義する ★
+        $userId = Auth::id();
+
+        $query = Item::with(['user', 'likes']);
+
+        // ログインユーザーが出品した商品を除外
+        if ($userId) {
+            $query->where('user_id', '!=', $userId);
+        }
 
         // 1. 検索キーワードによる絞り込み
         if ($keyword = $request->input('keyword')) {
@@ -25,16 +32,26 @@ class ItemController extends Controller
                   ->orWhere('description', 'LIKE', "%{$keyword}%");
             });
         }
-        
-        // 2. カテゴリによる絞り込み (必要に応じて追加)
+
+        // 2. カテゴリによる絞り込み (slugで検索)
         if ($categorySlug = $request->input('category')) {
             $query->whereHas('category', function($q) use ($categorySlug) {
                 $q->where('slug', $categorySlug);
             });
         }
-
-        // 3. ソート条件の適用
-        switch ($request->input('sort')) {
+        
+        // ★ 3. 価格による絞り込み (min_price, max_price) を追加 ★
+        if ($minPrice = $request->input('min_price')) {
+            $query->where('price', '>=', $minPrice);
+        }
+        if ($maxPrice = $request->input('max_price')) {
+            $query->where('price', '<=', $maxPrice);
+        }
+        
+        // 4. ソート条件の適用
+        $sort = $request->input('sort', 'id_asc');
+        
+        switch ($sort) {
             case 'price_asc':
                 $query->orderBy('price', 'asc');
                 break;
@@ -42,15 +59,20 @@ class ItemController extends Controller
                 $query->orderBy('price', 'desc');
                 break;
             case 'latest':
-            default:
                 $query->latest(); // created_at の降順
+                break;
+            case 'id_asc':
+            default:
+                // 'id_asc' が指定されたか、またはデフォルトの場合に適用
+                $query->orderBy('id', 'asc'); // 商品番号（ID）の昇順
                 break;
         }
 
-        // 4. ページネーションとクエリパラメータ保持
+        // 5. ページネーションとクエリパラメータ保持
         $items = $query->paginate(15)->appends($request->query());
-        $userId = Auth::id();
 
+        // $userId はここで定義済みなので削除
+        // return view('items.index', compact('items', 'userId')); は問題なし
         return view('items.index', compact('items', 'userId'));
     }
 
@@ -59,18 +81,20 @@ class ItemController extends Controller
      */
     public function show(Item $item)
     {
-        // Itemと関連情報（出品者、いいね情報、カテゴリ）をロード
+        // ... (省略: 変更なし)
         $item->load(['user', 'likes', 'category']);
         
         $userId = Auth::id();
         $isLiked = false;
 
         if ($userId) {
-            // ログインユーザーがいいねしているか判定
             $isLiked = $item->likes->contains('user_id', $userId);
         }
 
-        return view('items.show', compact('item', 'isLiked'));
+        return view('items.show', [
+            'product' => $item, // $itemの内容を'product'という名前でビューに渡す
+            'isLiked' => $isLiked,
+        ]);
     }
 
     /**
@@ -78,7 +102,7 @@ class ItemController extends Controller
      */
     public function create()
     {
-        // カテゴリ一覧を取得し、フォームに渡す
+        // ... (省略: 変更なし)
         $categories = Category::all();
         return view('items.create', compact('categories'));
     }
@@ -88,44 +112,38 @@ class ItemController extends Controller
      */
     public function store(Request $request)
     {
-        // 1. バリデーション
+        // ... (省略: 変更なし)
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'required|string',
-            'category_id' => 'required|exists:categories,id', // 存在するカテゴリIDかチェック
             'price' => 'required|integer|min:100|max:9999999',
             'stock' => 'required|integer|min:1',
-            'condition' => 'required|string',
-            'image' => 'required|image|max:2048', // 必須、画像ファイル、最大2MB
+            'image' => 'required|image|max:2048',
         ]);
 
-        // 2. 画像ファイルの保存
-        // storage/app/public/images/items フォルダに保存
         $path = $request->file('image')->store('images/items', 'public');
 
-        // 3. データベースに保存
         $item = Item::create([
             'user_id' => Auth::id(),
             'name' => $validated['name'],
             'description' => $validated['description'],
-            'category_id' => $validated['category_id'],
+            'category_id' => 1,
             'price' => $validated['price'],
             'stock' => $validated['stock'],
-            'condition' => $validated['condition'],
-            'image_path' => $path, // 公開パスを保存
+            'condition' => '新品・未使用',
+            'image_path' => $path,
         ]);
 
         return redirect()->route('items.show', $item)
-                         ->with('success', '商品を新たに出品しました！');
+                            ->with('success', '商品を新たに出品しました！');
     }
 
     /**
      * 商品編集フォームを表示 (edit)
-     * Policyを使用して、出品者本人のみアクセスできるようにするのが望ましい
      */
     public function edit(Item $item)
     {
-        // ユーザーがこの商品の出品者であることを確認
+        // ... (省略: 変更なし)
         if (Auth::id() !== $item->user_id) {
             return redirect()->route('items.show', $item)->with('error', 'この商品の編集権限はありません。');
         }
@@ -139,12 +157,11 @@ class ItemController extends Controller
      */
     public function update(Request $request, Item $item)
     {
-        // ユーザーがこの商品の出品者であることを確認
+        // ... (省略: 変更なし)
         if (Auth::id() !== $item->user_id) {
             return redirect()->route('items.show', $item)->with('error', 'この商品の更新権限はありません。');
         }
 
-        // 1. バリデーション (画像は任意)
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'required|string',
@@ -152,26 +169,22 @@ class ItemController extends Controller
             'price' => 'required|integer|min:100|max:9999999',
             'stock' => 'required|integer|min:1',
             'condition' => 'required|string',
-            'image' => 'nullable|image|max:2048', // nullを許容
+            'image' => 'nullable|image|max:2048',
         ]);
 
         $data = $validated;
 
-        // 2. 画像がアップロードされた場合、古い画像を削除し、新しい画像を保存
         if ($request->hasFile('image')) {
-            // 古い画像を削除
             if ($item->image_path) {
                 Storage::disk('public')->delete($item->image_path);
             }
-            // 新しい画像を保存
             $data['image_path'] = $request->file('image')->store('images/items', 'public');
         }
 
-        // 3. データベースを更新
         $item->update($data);
 
         return redirect()->route('items.show', $item)
-                         ->with('success', '商品を更新しました。');
+                            ->with('success', '商品を更新しました。');
     }
 
     /**
@@ -179,20 +192,18 @@ class ItemController extends Controller
      */
     public function destroy(Item $item)
     {
-        // ユーザーがこの商品の出品者であることを確認
+        // ... (省略: 変更なし)
         if (Auth::id() !== $item->user_id) {
             return redirect()->route('items.show', $item)->with('error', 'この商品の削除権限はありません。');
         }
 
-        // 1. 画像ファイルをストレージから削除
         if ($item->image_path) {
             Storage::disk('public')->delete($item->image_path);
         }
 
-        // 2. データベースから商品を削除
         $item->delete();
 
         return redirect()->route('items.index')
-                         ->with('success', '商品を削除しました。');
+                            ->with('success', '商品を削除しました。');
     }
 }

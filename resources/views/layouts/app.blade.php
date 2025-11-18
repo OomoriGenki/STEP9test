@@ -11,12 +11,17 @@
     <link rel="dns-prefetch" href="//fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=Nunito" rel="stylesheet">
 
+    @if (file_exists(public_path('build/manifest.json')))
     @vite(['resources/sass/app.scss', 'resources/js/app.js'])
+    @else
+    @endif
     
     <style>
-        html, body { height: 100%; }
+        /* 全体の背景色を薄いグレーに設定 */
+        body { background-color: #f7f7f7; } 
         #app { min-height: 100vh; display: flex; flex-direction: column; }
         main { flex-grow: 1; }
+        .navbar-nav .nav-link { font-size: 0.95rem; }
     </style>
 </head>
 <body>
