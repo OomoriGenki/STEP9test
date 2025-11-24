@@ -20,7 +20,7 @@ class Purchase extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'user_id',
+        'buyer_id',
         'item_id',
         'price',       // 購入時の価格を記録
         'quantity',    // 購入数量（フリマでは通常1）
@@ -32,7 +32,7 @@ class Purchase extends Model
      */
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'buyer_id');
     }
 
     /**

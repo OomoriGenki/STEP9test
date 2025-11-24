@@ -54,4 +54,4 @@ Route::get('/items/{item}', [ItemController::class, 'show'])->name('items.show')
 
 // お問い合わせ関連
 Route::get('/contact', [ContactController::class, 'create'])->name('contact.create');
-Route::post('/contact', [ContactController::class, 'send'])->name('contact.send');
+Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');

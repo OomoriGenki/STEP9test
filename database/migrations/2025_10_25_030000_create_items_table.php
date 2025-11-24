@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('items', function (Blueprint $table) {
             $table->id();
-            $table->string('condition');
+            $table->string('condition')->default('新品');
             
             // 外部キー: user_id は必須かつユーザー削除時に商品も削除
             $table->foreignId('user_id')->constrained()->cascadeOnDelete(); 

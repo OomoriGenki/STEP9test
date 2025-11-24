@@ -118,19 +118,21 @@ class ItemController extends Controller
             'description' => 'required|string',
             'price' => 'required|integer|min:100|max:9999999',
             'stock' => 'required|integer|min:1',
-            'image' => 'required|image|max:2048',
+            'image_path' => 'required|image|max:2048',
+            'category_id' => 'required|exists:categories,id', 
+            'condition' => 'required|string',
         ]);
 
-        $path = $request->file('image')->store('images/items', 'public');
+        $path = $request->file('image_path')->store('images/items', 'public');
 
         $item = Item::create([
             'user_id' => Auth::id(),
             'name' => $validated['name'],
             'description' => $validated['description'],
-            'category_id' => 1,
+            'category_id' => $validated['category_id'],
             'price' => $validated['price'],
             'stock' => $validated['stock'],
-            'condition' => '新品・未使用',
+            'condition' => $validated['condition'],
             'image_path' => $path,
         ]);
 
@@ -169,16 +171,16 @@ class ItemController extends Controller
             'price' => 'required|integer|min:100|max:9999999',
             'stock' => 'required|integer|min:1',
             'condition' => 'required|string',
-            'image' => 'nullable|image|max:2048',
+            'image_path' => 'nullable|image|max:2048',
         ]);
 
         $data = $validated;
 
-        if ($request->hasFile('image')) {
+        if ($request->hasFile('image_path')) {
             if ($item->image_path) {
                 Storage::disk('public')->delete($item->image_path);
             }
-            $data['image_path'] = $request->file('image')->store('images/items', 'public');
+            $data['image_path'] = $request->file('image_path')->store('images/items', 'public');
         }
 
         $item->update($data);

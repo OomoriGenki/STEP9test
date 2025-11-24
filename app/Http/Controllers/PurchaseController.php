@@ -71,7 +71,7 @@ class PurchaseController extends Controller
 
                 // 3. Purchase テーブルに購入記録を保存
                 Purchase::create([
-                    'user_id' => $user->id,
+                    'buyer_id' => $user->id,
                     'item_id' => $item->id,
                     'price' => $item->price * $quantity,     // 合計金額を記録 (単価 x 数量)
                     'quantity' => $quantity,                 // 数量を記録

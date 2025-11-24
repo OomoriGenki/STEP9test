@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use App\Models\Profile;
 
 class User extends Authenticatable
 {
@@ -41,6 +42,15 @@ class User extends Authenticatable
     }
 
     /**
+     * Userは単一のProfileを持つ (一対一) ★ 追加
+     */
+    public function profile()
+    {
+        // Profileモデルが存在し、user_idカラムを持っていることを前提とする
+        return $this->hasOne(Profile::class); 
+    }
+
+    /**
      * Userは複数のLikeを持つ (一対多)
      * どの商品にいいねしたかを確認できる
      */
@@ -54,6 +64,12 @@ class User extends Authenticatable
      */
     public function purchases()
     {
-        return $this->hasMany(Purchase::class);
+        return $this->hasMany(Purchase::class, 'buyer_id');
+    }
+
+    public function likedItems()
+    {
+    // usersテーブルとitemsテーブルをlikesテーブルでつなぐ
+    return $this->belongsToMany(Item::class, 'likes', 'user_id', 'item_id');
     }
 }

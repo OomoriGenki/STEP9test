@@ -98,6 +98,36 @@
             padding: 0; 
             margin-left: 20px;
         }
+
+        /* --- ★ 追加: フッタースタイル ★ --- */
+        .footer {
+            background-color: #333;
+            color: white;
+            padding: 20px 30px;
+            text-align: center;
+            width: 100%;
+            box-sizing: border-box; /* paddingを含めて幅100%にする */
+        }
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap; /* スマホ表示対策 */
+        }
+        .footer a {
+            color: white;
+            text-decoration: none;
+            margin: 0 10px;
+            padding: 8px 15px;
+            border: 1px solid white;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        .footer a:hover {
+            background-color: #555;
+        }
     </style>
 </head>
 <body>
@@ -182,5 +212,20 @@
         <div class="mt-4">
             {{ $items->appends(request()->query())->links('pagination::simple-default') }}
         </div>
+    </div>
+    {{-- ★ 追加: フッターセクション ★ --}}
+    <footer class="footer">
+        <div class="footer-content">
+            <div>
+                &copy; {{ date('Y') }} FrilClone. All Rights Reserved.
+            </div>
+            <div>
+                {{-- お問い合わせボタン --}}
+                <a href="{{ route('contact.create') }}" style="border-color: #007bff; background-color: #007bff;">
+                    お問い合わせ
+                </a>
+            </div>
+        </div>
+    </footer>
 </body>
 </html>
